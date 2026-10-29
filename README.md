@@ -6,8 +6,8 @@ College canteen ordering with pickup slots and rotating, signed QR pickup ticket
 **Live demo: https://smart-canteen-henna.vercel.app**. Sign in with one of the demo accounts below.
 
 ```bash
-git clone https://github.com/sid2428/smartcanteen.git
-cd smartcanteen
+git clone https://github.com/sid2428/smartcanteentake2.git
+cd smartcanteentake2
 npm install
 npm run dev        # http://localhost:3000
 ```
@@ -53,7 +53,7 @@ and open it from other devices on the same Wi-Fi via that machine's IP.
 | | |
 | --- | --- |
 | Production | https://smart-canteen-henna.vercel.app |
-| Hosting | Vercel project `smart-canteen`, connected to [github.com/sid2428/smartcanteen](https://github.com/sid2428/smartcanteen) |
+| Hosting | Vercel project `smart-canteen`, connected to [github.com/sid2428/smartcanteentake2](https://github.com/sid2428/smartcanteentake2) |
 | Production deploys | Automatic on every push to `main` |
 | Preview deploys | Automatic for other branches and pull requests (private: requires Vercel login) |
 | Production env | `SESSION_SECRET`, `TICKET_SIGNING_SECRET` (set in Vercel → Settings → Environment Variables) |
