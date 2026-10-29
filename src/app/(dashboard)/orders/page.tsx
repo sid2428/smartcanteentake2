@@ -38,7 +38,11 @@ export default function OrdersListPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h2 className="mb-4 text-xl font-bold">Your Orders</h2>
+      <div className="mb-5">
+        <p className="mb-1 text-sm font-semibold uppercase tracking-[0.16em] text-orange-600">Order history</p>
+        <h1 className="text-3xl font-bold tracking-tight text-ink-900">Your orders</h1>
+        <p className="mt-1 text-sm text-slate-500">Track payments, preparation and pickup in one place.</p>
+      </div>
 
       {orders.length === 0 ? (
         <Card>
@@ -53,7 +57,7 @@ export default function OrdersListPage() {
         <div className="flex flex-col gap-4">
           {orders.map((o) => (
             <Link key={o.id} href={`/orders/${o.id}`}>
-              <Card className="transition-colors hover:border-orange-300">
+              <Card className="transition-shadow hover:border-orange-300 hover:shadow-md">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div>

@@ -81,7 +81,7 @@ export default function OwnerDishesPage() {
 
   return (
     <div>
-      <CardHeader>
+      <CardHeader className="mb-5">
         <CardTitle>Dish Management</CardTitle>
         <Button size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? "Cancel" : "+ Add Dish"}
@@ -89,7 +89,7 @@ export default function OwnerDishesPage() {
       </CardHeader>
 
       {showForm && (
-        <Card className="mb-6">
+        <Card className="mb-6 border-orange-200">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -121,9 +121,9 @@ export default function OwnerDishesPage() {
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
-            <tr className="border-b border-zinc-200 text-zinc-500 dark:border-zinc-800">
+            <tr className="border-b border-canteen-200 text-slate-500">
               <th className="py-3 pr-3">Dish</th>
               <th className="py-3 pr-3">Category</th>
               <th className="py-3 pr-3">Counter</th>
@@ -135,7 +135,7 @@ export default function OwnerDishesPage() {
           </thead>
           <tbody>
             {dishes.map((d) => (
-              <tr key={d.id} className="border-b border-zinc-100 dark:border-zinc-800">
+              <tr key={d.id} className="border-b border-canteen-100 hover:bg-canteen-50">
                 <td className="py-3 pr-3 font-medium">
                   {d.emoji} {d.name}
                   {d.is_veg && <span className="ml-1 text-green-600">●</span>}

@@ -22,6 +22,7 @@ export const STEP_SECONDS = 30;
 /** Steps of clock drift accepted on either side of the server's current step. */
 export const ALLOWED_DRIFT_STEPS = 1;
 const MAC_BYTES = 16;
+export const MAX_QR_PAYLOAD_LENGTH = 256;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -86,6 +87,7 @@ export async function buildQrPayload(ticketKey: string, ticketId: string, nowMs:
 }
 
 export function parseQrPayload(payload: string): { ticketId: string; step: number; mac: string } | null {
+  if (typeof payload !== "string" || payload.length === 0 || payload.length > MAX_QR_PAYLOAD_LENGTH) return null;
   const parts = payload.trim().split(".");
   if (parts.length !== 4) return null;
   const [version, ticketId, stepText, mac] = parts;

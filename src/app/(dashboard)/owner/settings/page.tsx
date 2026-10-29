@@ -54,7 +54,7 @@ export default function OwnerSettingsPage() {
     }
   }
 
-  if (!settings) return <p className="py-8 text-center text-zinc-400">Loading…</p>;
+  if (!settings) return <p className="rounded-2xl border border-canteen-200 bg-white py-12 text-center text-slate-500">Loading...</p>;
 
   return (
     <Card className="max-w-xl">

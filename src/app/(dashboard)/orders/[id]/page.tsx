@@ -92,8 +92,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     <div className="mx-auto max-w-xl">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
               <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">Order Reference</span>
               <CardTitle className="text-2xl font-mono">{order.code}</CardTitle>
             </div>
@@ -103,7 +103,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
         <CardContent className="space-y-6">
           {order.slot && (
-            <div className="rounded-lg bg-orange-50 p-3 text-sm text-orange-900 dark:bg-orange-950/40 dark:text-orange-200">
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900">
               <span className="font-semibold">Pickup Time: </span>
               {formatDay(order.slot.starts_at)}, {formatTime(order.slot.starts_at)} - {formatTime(order.slot.ends_at)}
             </div>
@@ -113,15 +113,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
             <h4 className="mb-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">Items Ordered</h4>
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-2 text-sm">
-                  <div className="flex items-center gap-2">
+                <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span className="text-xl">{item.emoji}</span>
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-medium">{item.dish_name}</div>
                       <div className="text-xs text-zinc-400">Counter: {item.counter}</div>
                     </div>
                   </div>
-                  <div className="text-right">
+                    <div className="shrink-0 text-right">
                     <div>{formatINR(item.unit_paise * item.qty)}</div>
                     <div className="text-xs text-zinc-400">
                       {formatINR(item.unit_paise)} × {item.qty}
@@ -138,11 +138,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {isPending && (
-            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20">
-              <div className="text-sm text-amber-800 dark:text-amber-300">
+            <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-sm text-amber-800">
                 ⚠️ Slot and items held. Please complete payment before hold expires.
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button className="flex-1" disabled={paying} onClick={handlePay}>
                   {paying ? "Processing UPI…" : "Pay with UPI / QR"}
                 </Button>
@@ -154,8 +154,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           )}
 
           {isPaid && (
-            <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-center dark:border-green-900/50 dark:bg-green-950/20">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">
+            <div className="rounded-xl border border-green-200 bg-veg-50 p-4 text-center">
+              <p className="text-sm font-medium text-green-800">
                 Payment Received! View your rotating QR tickets to redeem food at the counter.
               </p>
               <Link href="/tickets">

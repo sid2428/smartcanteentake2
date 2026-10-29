@@ -52,7 +52,7 @@ export default function TicketsPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h2 className="mb-6 text-2xl font-bold">Your Food Tickets</h2>
+      <h2 className="mb-6 text-2xl font-bold">Your food tickets</h2>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         {/* Active Ticket QR Display */}
@@ -75,15 +75,15 @@ export default function TicketsPage() {
                 onClick={() => setActiveTicket(t)}
                 className={`cursor-pointer rounded-xl border p-4 transition-all ${
                   isSelected
-                    ? "border-orange-500 bg-orange-50/50 dark:border-orange-500/80 dark:bg-orange-950/20"
-                    : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
+                    ? "border-orange-500 bg-orange-50"
+                    : "border-canteen-200 bg-white hover:border-orange-300"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <span className="text-2xl">{t.emoji}</span>
-                    <div>
-                      <div className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    <div className="min-w-0">
+                      <div className="break-words font-semibold text-zinc-900 dark:text-zinc-100">
                         {t.dish_name} <span className="text-orange-600">×{t.qty}</span>
                       </div>
                       <div className="text-xs text-zinc-400">
@@ -103,62 +103,94 @@ export default function TicketsPage() {
 }
 
 function TicketQRCard({ ticket }: { ticket: Ticket }) {
-  const [ticketKey, setTicketKey] = useState<string | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [qrState, setQrState] = useState<{
+    ticketId: string;
+    key: string | null;
+    dataUrl: string;
+    error: string | null;
+  }>({ ticketId: "", key: null, dataUrl: "", error: null });
   const [secondsRemaining, setSecondsRemaining] = useState<number>(STEP_SECONDS);
+  const isRedeemed = ticket.status === "REDEEMED";
+  const isExpired = ticket.status === "EXPIRED" || ticket.status === "CANCELLED";
+  const ticketKey = qrState.ticketId === ticket.id ? qrState.key : null;
+  const qrDataUrl = qrState.ticketId === ticket.id ? qrState.dataUrl : "";
+  const qrError = qrState.ticketId === ticket.id ? qrState.error : null;
 
   // Fetch ticket secret key
   useEffect(() => {
-    let mounted = true;
-    api<{ key: string }>(`/api/tickets/${ticket.id}/key`)
+    const controller = new AbortController();
+
+    if (isRedeemed || isExpired) {
+      return () => controller.abort();
+    }
+
+    api<{ key: string }>(`/api/tickets/${ticket.id}/key`, { signal: controller.signal })
       .then((res) => {
-        if (mounted) setTicketKey(res.key);
+        setQrState({ ticketId: ticket.id, key: res.key, dataUrl: "", error: null });
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        if (err?.name !== "AbortError") {
+          setQrState({ ticketId: ticket.id, key: null, dataUrl: "", error: "This ticket QR code is unavailable right now." });
+        }
+      });
     return () => {
-      mounted = false;
+      controller.abort();
     };
-  }, [ticket.id]);
+  }, [isExpired, isRedeemed, ticket.id]);
 
   // Handle live 30-sec rotating QR generation
   useEffect(() => {
     if (!ticketKey) return;
 
     let isSubscribed = true;
+    let generation = 0;
 
     async function updateQR() {
       if (!isSubscribed || !ticketKey) return;
+      const currentGeneration = ++generation;
       const now = Date.now();
-      const payload = await buildQrPayload(ticketKey, ticket.id, now);
-      const dataUrl = await QRCode.toDataURL(payload, {
-        margin: 1,
-        width: 256,
-        color: { dark: "#000000", light: "#ffffff" },
-      });
-      if (isSubscribed) {
-        setQrDataUrl(dataUrl);
+      try {
+        const payload = await buildQrPayload(ticketKey, ticket.id, now);
+        const dataUrl = await QRCode.toDataURL(payload, {
+          margin: 4,
+          width: 256,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        if (isSubscribed && currentGeneration === generation) {
+          setQrState((current) =>
+            current.ticketId === ticket.id && current.key === ticketKey
+              ? { ...current, dataUrl, error: null }
+              : current,
+          );
+        }
+      } catch {
+        if (isSubscribed && currentGeneration === generation) {
+          setQrState((current) =>
+            current.ticketId === ticket.id && current.key === ticketKey
+              ? { ...current, error: "We could not generate this ticket QR code. Please try again." }
+              : current,
+          );
+        }
       }
     }
 
-    updateQR();
+    void updateQR();
 
     const interval = setInterval(() => {
       const now = Date.now();
       const msLeft = msUntilNextStep(now);
       setSecondsRemaining(Math.ceil(msLeft / 1000));
       if (msLeft > 29000 || msLeft < 1000) {
-        updateQR();
+        void updateQR();
       }
     }, 1000);
 
     return () => {
       isSubscribed = false;
+      generation += 1;
       clearInterval(interval);
     };
   }, [ticketKey, ticket.id]);
-
-  const isRedeemed = ticket.status === "REDEEMED";
-  const isExpired = ticket.status === "EXPIRED" || ticket.status === "CANCELLED";
 
   return (
     <Card className="text-center">
@@ -187,6 +219,11 @@ function TicketQRCard({ ticket }: { ticket: Ticket }) {
             <div className="flex h-56 w-56 flex-col items-center justify-center rounded-2xl bg-red-50 text-red-500 dark:bg-red-950/20">
               <span className="text-4xl">❌</span>
               <p className="mt-2 text-sm font-semibold">Ticket Expired</p>
+            </div>
+          ) : qrError ? (
+            <div className="flex h-56 w-56 flex-col items-center justify-center rounded-2xl bg-red-50 px-6 text-red-600">
+              <p className="text-sm font-semibold">QR unavailable</p>
+              <p className="mt-1 text-xs">{qrError}</p>
             </div>
           ) : qrDataUrl ? (
             <div className="relative inline-block rounded-2xl border-4 border-orange-500/20 p-2 shadow-inner">

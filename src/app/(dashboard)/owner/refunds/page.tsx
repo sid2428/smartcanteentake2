@@ -38,8 +38,8 @@ export default function OwnerRefundsPage() {
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b bg-zinc-50 dark:bg-zinc-800">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="border-b border-canteen-200 bg-canteen-50">
                 <tr>
                   <th className="p-3">Date</th>
                   <th className="p-3">Student</th>

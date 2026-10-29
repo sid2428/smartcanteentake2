@@ -56,7 +56,7 @@ export default function OwnerDashboard() {
           <p className="text-sm text-zinc-500">Today&apos;s real-time operations & sales</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             disabled={generatingSlots}
@@ -71,7 +71,7 @@ export default function OwnerDashboard() {
       </div>
 
       {genMessage && (
-        <div className="rounded-lg bg-orange-100 p-3 text-sm text-orange-800 dark:bg-orange-950/40 dark:text-orange-200">
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800">
           {genMessage}
         </div>
       )}

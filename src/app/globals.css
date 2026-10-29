@@ -1,1 +1,61 @@
 @import "tailwindcss";
+
+/* Smart Canteen is intentionally a light-only demo interface. Tailwind's dark
+ * utilities only activate when the app opts into a .dark class. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-canteen-50: #fff8f1;
+  --color-canteen-100: #fff1e5;
+  --color-canteen-200: #f1e5da;
+  --color-canteen-500: #f97316;
+  --color-canteen-600: #ea580c;
+  --color-coral-500: #fb5a36;
+  --color-ink-900: #1f2937;
+  --color-slate-500: #64748b;
+  --color-veg-50: #ddf7e7;
+  --color-veg-700: #15803d;
+  /* Existing screens use zinc utility names; remap them to the light system. */
+  --color-zinc-50: #fff8f1;
+  --color-zinc-100: #fff1e5;
+  --color-zinc-200: #f1e5da;
+  --color-zinc-300: #ead7c6;
+  --color-zinc-400: #94a3b8;
+  --color-zinc-500: #64748b;
+  --color-zinc-600: #475569;
+  --color-zinc-700: #334155;
+  --color-zinc-800: #1f2937;
+  --color-zinc-900: #1f2937;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  background: #fff8f1;
+}
+
+body {
+  background: #fff8f1;
+  color: #1f2937;
+  overflow-x: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}

@@ -88,7 +88,7 @@ export default function ScanPage() {
     <div className="mx-auto max-w-xl space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold">Counter Ticket Scanner</h2>
-        <p className="text-sm text-zinc-500">Scan student rotating QR codes to fulfill orders</p>
+        <p className="text-sm text-slate-500">Scan student rotating QR codes to fulfill orders</p>
       </div>
 
       <Card>
@@ -113,7 +113,7 @@ export default function ScanPage() {
               placeholder="Paste raw QR token payload..."
               value={manualCode}
               onChange={(e) => setManualCode(e.target.value)}
-              className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+              className="h-11 min-w-0 flex-1 rounded-lg border border-canteen-200 bg-white px-3 text-sm text-ink-900 placeholder:text-slate-500 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-500/15"
             />
             <Button type="submit" disabled={processing || !manualCode}>
               Redeem
@@ -124,20 +124,20 @@ export default function ScanPage() {
 
       {/* Result Display */}
       {lastRedeemed && (
-        <div className="rounded-xl border border-green-300 bg-green-50 p-6 text-center dark:border-green-800 dark:bg-green-950/30">
+        <div className="rounded-2xl border border-green-200 bg-veg-50 p-6 text-center">
           <span className="text-4xl">🎉</span>
-          <h3 className="mt-2 text-xl font-bold text-green-900 dark:text-green-100">
+          <h3 className="mt-2 text-xl font-bold text-green-900">
             Dispense {lastRedeemed.qty} × {lastRedeemed.dish_name}
           </h3>
-          <p className="text-sm text-green-700 dark:text-green-300">
+          <p className="text-sm text-green-700">
             Counter: {lastRedeemed.counter} · Ticket #{lastRedeemed.id.slice(0, 8)} verified and redeemed!
           </p>
         </div>
       )}
 
       {errorMsg && (
-        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-center dark:border-red-800 dark:bg-red-950/30">
-          <p className="font-semibold text-red-800 dark:text-red-200">{errorMsg}</p>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-center">
+          <p className="font-semibold text-red-800">{errorMsg}</p>
         </div>
       )}
     </div>

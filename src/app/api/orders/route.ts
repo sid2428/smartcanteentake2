@@ -7,10 +7,21 @@ import { generateOrderCode } from "@/lib/domain";
 
 const OrderItemSchema = z.object({ dishId: z.string().uuid(), qty: z.number().int().positive().max(10) });
 
-const PlaceOrderSchema = z.object({
-  slotId: z.string().uuid(),
-  items: z.array(OrderItemSchema).min(1).max(20),
-});
+const PlaceOrderSchema = z
+  .object({
+    slotId: z.string().uuid(),
+    items: z.array(OrderItemSchema).min(1).max(20),
+  })
+  .superRefine((order, ctx) => {
+    const dishIds = new Set<string>();
+    for (const item of order.items) {
+      if (dishIds.has(item.dishId)) {
+        ctx.addIssue({ code: "custom", path: ["items"], message: "Each dish may only appear once per order" });
+        return;
+      }
+      dishIds.add(item.dishId);
+    }
+  });
 
 /** GET /api/orders — list the student's orders. */
 export const GET = handle(async () => {

@@ -10,23 +10,21 @@ import type { Role } from "@/lib/domain";
 type User = { id: string; name: string; role: Role } | null;
 
 const studentLinks = [
-  { href: ROUTES.menu, label: "Menu", icon: "🍽️" },
-  { href: ROUTES.orders, label: "Orders", icon: "📋" },
-  { href: ROUTES.tickets, label: "Tickets", icon: "🎫" },
+  { href: ROUTES.menu, label: "Menu" },
+  { href: ROUTES.orders, label: "Orders" },
+  { href: ROUTES.tickets, label: "Tickets" },
 ];
-
 const staffLinks = [
-  { href: ROUTES.kitchen, label: "Kitchen", icon: "👨‍🍳" },
-  { href: ROUTES.scan, label: "Scan QR", icon: "📷" },
+  { href: ROUTES.kitchen, label: "Kitchen" },
+  { href: ROUTES.scan, label: "Scan QR" },
 ];
-
 const ownerLinks = [
-  { href: ROUTES.owner, label: "Dashboard", icon: "📊" },
-  { href: ROUTES.ownerDishes, label: "Dishes", icon: "🍛" },
-  { href: ROUTES.kitchen, label: "Kitchen", icon: "👨‍🍳" },
-  { href: ROUTES.scan, label: "Scan QR", icon: "📷" },
-  { href: ROUTES.ownerSettings, label: "Settings", icon: "⚙️" },
-  { href: ROUTES.ownerRefunds, label: "Refunds", icon: "💰" },
+  { href: ROUTES.owner, label: "Dashboard" },
+  { href: ROUTES.ownerDishes, label: "Dishes" },
+  { href: ROUTES.kitchen, label: "Kitchen" },
+  { href: ROUTES.scan, label: "Scan QR" },
+  { href: ROUTES.ownerSettings, label: "Settings" },
+  { href: ROUTES.ownerRefunds, label: "Refunds" },
 ];
 
 function linksForRole(role: Role) {
@@ -54,68 +52,62 @@ export function AppNav() {
   const links = user ? linksForRole(user.role) : [];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link href={user ? ROLE_HOME[user.role] : "/login"} className="text-lg font-bold text-orange-600">
-          🍽️ Smart Canteen
+    <header className="sticky top-0 z-40 border-b border-canteen-200 bg-white/95 shadow-[0_2px_12px_rgba(120,75,35,0.04)] backdrop-blur">
+      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+        <Link href={user ? ROLE_HOME[user.role] : "/login"} className="flex shrink-0 items-center gap-2.5 rounded-lg text-base font-bold text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 sm:text-lg">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-xs font-bold text-white" aria-hidden>
+            SC
+          </span>
+          Smart Canteen
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 md:flex">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                pathname === l.href || pathname.startsWith(l.href + "/")
-                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300"
-                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-              }`}
-            >
-              {l.icon} {l.label}
-            </Link>
-          ))}
+        <nav aria-label="Main navigation" className="hidden items-center gap-1 lg:flex">
+          {links.map((l) => {
+            const active = pathname === l.href || pathname.startsWith(l.href + "/");
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={active ? "rounded-lg bg-orange-100 px-3 py-2 text-sm font-medium text-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600" : "rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-canteen-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
           {user && (
-            <button
-              onClick={logout}
-              className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            >
+            <button onClick={logout} className="ml-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-canteen-100 hover:text-ink-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600">
               Sign out
             </button>
           )}
         </nav>
 
-        {/* Mobile hamburger */}
         <button
-          className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-100 md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
+          className="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-canteen-100 lg:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
           onClick={() => setMenuOpen((v) => !v)}
         >
-          {menuOpen ? "✕" : "☰"}
+          {menuOpen ? "Close" : "Menu"}
         </button>
       </div>
 
-      {/* Mobile dropdown */}
       {menuOpen && (
-        <nav className="border-t border-zinc-200 bg-white px-4 pb-4 pt-2 md:hidden dark:border-zinc-800 dark:bg-zinc-950">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              onClick={() => setMenuOpen(false)}
-              className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
-                pathname === l.href
-                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30"
-                  : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400"
-              }`}
-            >
-              {l.icon} {l.label}
-            </Link>
-          ))}
+        <nav aria-label="Mobile navigation" className="border-t border-canteen-200 bg-white px-4 pb-4 pt-2 lg:hidden">
+          {links.map((l) => {
+            const active = pathname === l.href;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setMenuOpen(false)}
+                className={active ? "block rounded-lg bg-orange-100 px-3 py-2.5 text-sm font-medium text-orange-700" : "block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-canteen-100 hover:text-ink-900"}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
           {user && (
-            <button
-              onClick={logout}
-              className="mt-1 w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400"
-            >
+            <button onClick={logout} className="mt-1 w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-500 hover:bg-canteen-100 hover:text-ink-900">
               Sign out ({user.name})
             </button>
           )}

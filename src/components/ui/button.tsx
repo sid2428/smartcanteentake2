@@ -3,14 +3,14 @@
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500 disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 disabled:pointer-events-none disabled:opacity-50";
 
 const variants = {
-  primary: "bg-orange-600 text-white hover:bg-orange-700 active:bg-orange-800",
-  secondary: "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
-  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800",
-  ghost: "text-zinc-700 hover:bg-zinc-100 active:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800",
-  outline: "border border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800",
+  primary: "bg-orange-500 text-white shadow-sm hover:bg-orange-600 active:bg-orange-700",
+  secondary: "bg-canteen-100 text-ink-900 hover:bg-canteen-200 active:bg-orange-100",
+  danger: "bg-red-600 text-white shadow-sm hover:bg-red-700 active:bg-red-800",
+  ghost: "text-slate-500 hover:bg-canteen-100 hover:text-ink-900 active:bg-canteen-200",
+  outline: "border border-canteen-200 bg-white text-ink-900 hover:border-orange-300 hover:bg-canteen-50 active:bg-orange-100",
 } as const;
 
 const sizes = {

@@ -46,14 +46,14 @@ export default function SignupPage() {
   }
 
   return (
-    <Card>
-      <h2 className="mb-1 text-lg font-semibold text-zinc-900 dark:text-zinc-100">Create account</h2>
-      <p className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+    <Card className="mx-auto w-full max-w-xl">
+      <h2 className="mb-1 text-lg font-semibold text-ink-900">Create account</h2>
+      <p className="mb-4 text-xs text-slate-500">
         Demo mode: new accounts are removed when the demo data is reset.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-400">
+          <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
             {error}
           </p>
         )}
@@ -73,9 +73,9 @@ export default function SignupPage() {
           {loading ? "Creating account…" : "Create account"}
         </Button>
       </form>
-      <p className="mt-4 text-center text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="mt-5 text-center text-sm text-slate-500">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-orange-600 hover:underline">
+        <Link href="/login" className="rounded-sm font-medium text-orange-600 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600">
           Sign in
         </Link>
       </p>

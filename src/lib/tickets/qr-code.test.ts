@@ -90,9 +90,17 @@ describe("QR ticket codes", () => {
     `CQ1.${TICKET}.-1.AAAAAAAAAAAAAAAAAAAAAA`,
     `CQ1.${TICKET}.1.short`,
     `CQ1.${TICKET}.1.AAAAAAAAAAAAAAAAAAAAAA.extra`,
+    `CQ1.${TICKET}.1.${"A".repeat(230)}`,
   ])("rejects malformed payload %j", async (payload) => {
     expect(parseQrPayload(payload)).toBeNull();
     await expect(verifyQrPayload(SECRET, payload, NOW)).resolves.toEqual({ ok: false, reason: "MALFORMED" });
+  });
+
+  it("rejects oversized and non-string payloads before parsing", async () => {
+    const oversized = "x".repeat(257);
+    expect(parseQrPayload(oversized)).toBeNull();
+    expect(parseQrPayload(42 as unknown as string)).toBeNull();
+    await expect(verifyQrPayload(SECRET, oversized, NOW)).resolves.toEqual({ ok: false, reason: "MALFORMED" });
   });
 
   it("reports time until rotation", () => {

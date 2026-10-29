@@ -82,7 +82,7 @@ export default function KitchenDashboard() {
               className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 counterFilter === c
                   ? "bg-orange-600 text-white"
-                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
+                  : "border border-canteen-200 bg-white text-slate-500 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
               }`}
             >
               {c}
@@ -94,7 +94,7 @@ export default function KitchenDashboard() {
       {loading ? (
         <div className="py-12 text-center text-zinc-500">Loading tickets…</div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {/* Incoming / Issued Column */}
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b pb-2">
@@ -183,7 +183,7 @@ export default function KitchenDashboard() {
             </div>
             <div className="space-y-3">
               {ready.map((t) => (
-                <Card key={t.id} className="border-l-4 border-l-green-500 bg-green-50/20 dark:bg-green-950/10">
+                  <Card key={t.id} className="border-l-4 border-l-green-500 bg-veg-50/50">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-sm font-bold">#{t.order_code}</span>
