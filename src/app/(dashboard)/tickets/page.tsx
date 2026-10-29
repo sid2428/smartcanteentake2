@@ -99,7 +99,7 @@ export default function TicketsPage() {
                       }`}
                       aria-hidden
                     />
-                    <DishThumb name={t.dish_name} emoji={t.emoji} size="h-12 w-12" />
+                    <DishThumb name={t.dish_name} emoji={t.emoji} size="h-12 w-12" eager={i < 6} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold text-ink">
                         {t.dish_name} <span className="font-normal text-terra-500">×{t.qty}</span>

@@ -7,14 +7,17 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-full flex-1 flex-col lg:flex-row">
       {/* Photography panel */}
       <aside className="relative h-64 shrink-0 overflow-hidden sm:h-80 lg:sticky lg:top-0 lg:h-screen lg:w-[52%]">
-        <Image
-          src={SCENES.dosaLeaf}
-          alt="Crispy dosa with chutney and sambar on a banana leaf"
-          fill
-          preload
-          sizes="(min-width: 1024px) 52vw, 100vw"
-          className="animate-fade scale-105 object-cover"
-        />
+        {/* next/image `fill` needs a relative/absolute parent; the aside itself is sticky on desktop. */}
+        <div className="absolute inset-0">
+          <Image
+            src={SCENES.dosaLeaf}
+            alt="Crispy dosa with chutney and sambar on a banana leaf"
+            fill
+            preload
+            sizes="(min-width: 1024px) 52vw, 100vw"
+            className="animate-fade scale-105 object-cover"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-forest-900/85 via-forest-900/25 to-forest-900/10" />
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-10 lg:p-14">
           <p className="eyebrow mb-3 animate-rise !text-terra-200">The college canteen, reimagined</p>

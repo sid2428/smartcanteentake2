@@ -50,15 +50,17 @@ export function DishThumb({
   emoji,
   size = "h-12 w-12",
   className = "",
+  eager = false,
 }: {
   name: string;
   emoji?: string | null;
   size?: string;
   className?: string;
+  eager?: boolean;
 }) {
   return (
     <span className={`relative inline-block shrink-0 overflow-hidden rounded-full bg-cream-200 ${size} ${className}`}>
-      <DishPhoto name={name} emoji={emoji} sizes="96px" emojiClassName="text-xl" />
+      <DishPhoto name={name} emoji={emoji} sizes="96px" emojiClassName="text-xl" eager={eager} />
     </span>
   );
 }
