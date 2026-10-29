@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+/*
+ * Smart Canteen design tokens.
+ * Warm cream base, forest green as the primary voice, terracotta as a sparing accent.
+ */
+@theme {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-serif), ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-cream-50: #fdfaf4;
+  --color-cream-100: #f8f2e7;
+  --color-cream-200: #f0e7d6;
+  --color-cream-300: #e4d7bf;
+  --color-cream-400: #cdbb9b;
+
+  --color-forest-50: #eef3ee;
+  --color-forest-100: #d9e5db;
+  --color-forest-200: #b3cbb8;
+  --color-forest-300: #86aa8f;
+  --color-forest-400: #5b8667;
+  --color-forest-500: #3e6b4c;
+  --color-forest-600: #2f563b;
+  --color-forest-700: #24442f;
+  --color-forest-800: #1b3424;
+  --color-forest-900: #13261a;
+
+  --color-terra-50: #fbf0ea;
+  --color-terra-100: #f5dccf;
+  --color-terra-200: #ebb9a0;
+  --color-terra-300: #de9472;
+  --color-terra-400: #cf7550;
+  --color-terra-500: #bb5d39;
+  --color-terra-600: #9c4a2c;
+  --color-terra-700: #7b3a24;
+
+  --color-ink: #1f1b16;
+  --color-ink-soft: #4a4339;
+  --color-ink-muted: #7d7365;
+  --color-ink-faint: #a89d8c;
+
+  --shadow-soft: 0 1px 2px rgb(60 45 20 / 0.04), 0 8px 24px -12px rgb(60 45 20 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(60 45 20 / 0.05), 0 22px 44px -18px rgb(60 45 20 / 0.25);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-rise: rise 0.7s var(--ease-out-soft) both;
+  --animate-fade: fade 0.5s ease-out both;
+  --animate-sheet: sheet 0.45s var(--ease-out-soft) both;
+  --animate-pop: pop 0.45s var(--ease-out-soft) both;
+  --animate-toast: toast 0.45s var(--ease-out-soft) both;
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes sheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes pop {
+    0% { opacity: 0; transform: scale(0.94); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes grow {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+  @keyframes toast {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--color-cream-100);
+  /* Subtle paper grain, for warmth. */
+  background-image: radial-gradient(rgb(120 95 55 / 0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+  color: var(--color-ink);
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  background: var(--color-forest-200);
+  color: var(--color-forest-900);
+}
+
+@layer components {
+  /* Small uppercase label above headings. */
+  .eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-terra-500);
+  }
+
+  /* Horizontal scroller without a visible scrollbar. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Indian veg / non-veg mark: square outline with a dot. */
+  .diet-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    border: 1.5px solid currentColor;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .diet-mark::after {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    background: currentColor;
+  }
+}
+
+/* Staggered entrance: set --i on children. */
+.stagger > * {
+  animation: var(--animate-rise);
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+/* html5-qrcode renders its own markup; bring it into the palette. */
+#qr-reader {
+  border: none !important;
+  color: var(--color-cream-100);
+}
+#qr-reader video {
+  border-radius: 1rem;
+  object-fit: cover;
+}
+#qr-reader img[alt="Info icon"],
+#qr-reader__header_message {
+  display: none !important;
+}
+#qr-reader__dashboard_section_csr span,
+#qr-reader__dashboard_section_swaplink {
+  color: var(--color-cream-200) !important;
+  font-size: 0.8rem;
+}
+#qr-reader__dashboard_section_swaplink {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#qr-reader button {
+  margin: 0.75rem 0.25rem 0.25rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--color-cream-100);
+  color: var(--color-forest-800);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#qr-reader button:hover {
+  background: var(--color-cream-300);
+}
+#qr-reader select {
+  margin: 0.5rem 0;
+  max-width: 100%;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: var(--color-forest-700);
+  color: var(--color-cream-100);
+  border: 1px solid var(--color-forest-500);
+  font-size: 0.8rem;
+}
+#qr-reader__dashboard_section > div {
+  padding: 0.25rem 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
