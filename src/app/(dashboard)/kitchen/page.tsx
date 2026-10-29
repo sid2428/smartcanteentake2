@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { api } from "@/lib/api-client";
+import { useState, type ReactNode } from "react";
+import { api, errorMessage } from "@/lib/api-client";
+import { useLive } from "@/lib/use-live";
 import { Button } from "@/components/ui/button";
-import { PageHeader, Loading } from "@/components/ui/page";
+import { PageHeader, Loading, ErrorState, LiveIndicator } from "@/components/ui/page";
 import { DishThumb } from "@/components/dish-photo";
 import { useToast } from "@/components/ui/toast";
 import { COUNTERS, formatTime } from "@/lib/domain";
@@ -18,47 +19,47 @@ type KitchenTicket = {
   status: "ISSUED" | "PREPARING" | "READY";
   slot_starts_at: string;
   created_at: string;
+  ready_estimate_at: string | null;
+  at_risk: boolean;
 };
+
+type CounterLoad = { counter: string; waiting: number; cooking: number; backlogMinutes: number };
 
 export default function KitchenDashboard() {
   const { toast } = useToast();
-  const [tickets, setTickets] = useState<KitchenTicket[]>([]);
   const [counterFilter, setCounterFilter] = useState<string>("All");
-  const [loading, setLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
+  // Tickets with a status change in flight: their buttons are disabled so a double tap sends one request.
+  const [pending, setPending] = useState<Set<string>>(() => new Set());
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchTickets() {
-      try {
-        const res = await api<{ tickets: KitchenTicket[] }>(
-          `/api/kitchen/tickets?counter=${encodeURIComponent(counterFilter)}`
-        );
-        if (!cancelled) setTickets(res.tickets);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    fetchTickets();
-    const interval = setInterval(fetchTickets, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [counterFilter, reloadKey]);
+  const live = useLive(
+    () =>
+      api<{ tickets: KitchenTicket[]; loads: CounterLoad[] }>(
+        `/api/kitchen/tickets?counter=${encodeURIComponent(counterFilter)}`,
+      ),
+    { intervalMs: 5_000, key: counterFilter },
+  );
+  const tickets = live.data?.tickets ?? [];
+  const loads = live.data?.loads ?? [];
+  const loading = live.loading && !live.data;
 
   async function updateStatus(id: string, nextStatus: "ISSUED" | "PREPARING" | "READY") {
+    if (pending.has(id)) return;
+    setPending((prev) => new Set(prev).add(id));
     try {
       await api(`/api/kitchen/tickets/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ status: nextStatus }),
       });
       toast(`Ticket marked as ${nextStatus}`, "success");
-      setReloadKey((k) => k + 1);
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to update status", "error");
+      toast(errorMessage(err, "Failed to update status"), "error");
+    } finally {
+      await live.refresh();
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -76,12 +77,18 @@ export default function KitchenDashboard() {
           </>
         }
         lede={
-          <span className="inline-flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inset-0 animate-ping rounded-full bg-forest-400" />
-              <span className="relative h-2 w-2 rounded-full bg-forest-500" />
-            </span>
-            Live ticket queue updating every 5s
+          <span className="flex flex-col gap-3">
+            <LiveIndicator stale={live.stale} />
+            {loads.length > 0 && (
+              <span className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-muted">
+                {loads.map((l) => (
+                  <span key={l.counter}>
+                    <span className="font-semibold text-ink-soft">{l.counter}</span> · {l.waiting} waiting · {l.cooking} cooking
+                    {l.backlogMinutes > 0 && <> · clears in ~{l.backlogMinutes} min</>}
+                  </span>
+                ))}
+              </span>
+            )}
           </span>
         }
         actions={
@@ -105,12 +112,14 @@ export default function KitchenDashboard() {
 
       {loading ? (
         <Loading label="Loading tickets…" />
+      ) : !live.data ? (
+        <ErrorState message={errorMessage(live.error)} onRetry={() => void live.refresh()} />
       ) : (
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8 xl:gap-12">
           <Lane title="Incoming" count={issued.length} dot="bg-[#5a7b8c]" empty="No new incoming orders">
             {issued.map((t) => (
               <TicketTile key={t.id} t={t}>
-                <Button size="sm" className="w-full" onClick={() => updateStatus(t.id, "PREPARING")}>
+                <Button size="sm" className="w-full" disabled={pending.has(t.id)} onClick={() => updateStatus(t.id, "PREPARING")}>
                   Start Preparing →
                 </Button>
               </TicketTile>
@@ -121,10 +130,10 @@ export default function KitchenDashboard() {
             {preparing.map((t) => (
               <TicketTile key={t.id} t={t} accent="ring-[#ecd9a8]">
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => updateStatus(t.id, "ISSUED")}>
+                  <Button size="sm" variant="ghost" disabled={pending.has(t.id)} onClick={() => updateStatus(t.id, "ISSUED")}>
                     ↩ Back
                   </Button>
-                  <Button size="sm" variant="accent" className="flex-1" onClick={() => updateStatus(t.id, "READY")}>
+                  <Button size="sm" variant="accent" className="flex-1" disabled={pending.has(t.id)} onClick={() => updateStatus(t.id, "READY")}>
                     Mark Ready ✓
                   </Button>
                 </div>
@@ -209,6 +218,11 @@ function TicketTile({
         </div>
         <span className="font-display text-3xl font-light text-terra-500">×{t.qty}</span>
       </div>
+      {t.status !== "READY" && t.ready_estimate_at && (
+        <p className={`-mt-1 mb-3 text-xs ${t.at_risk ? "font-semibold text-terra-600" : "text-ink-muted"}`}>
+          {t.at_risk ? "Behind slot · " : ""}Est. ready {formatTime(t.ready_estimate_at)}
+        </p>
+      )}
       {children}
     </article>
   );

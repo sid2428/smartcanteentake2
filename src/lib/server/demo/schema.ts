@@ -64,9 +64,14 @@ CREATE TABLE IF NOT EXISTS orders (
   payment_ref    text,
   hold_expires_at timestamptz NOT NULL,
   paid_at        timestamptz,
+  -- Idempotency key sent by the client per checkout attempt, so a double-submit or a retry
+  -- after a dropped connection returns the original order instead of placing a second one.
+  client_ref     text,
   created_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS orders_user_idx ON orders (user_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS orders_client_ref_idx ON orders (user_id, client_ref) WHERE client_ref IS NOT NULL;
+CREATE INDEX IF NOT EXISTS orders_created_idx ON orders (created_at);
 
 CREATE TABLE IF NOT EXISTS order_items (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

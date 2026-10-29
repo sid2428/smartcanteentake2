@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { handle, parseBody } from "@/lib/server/http";
+import { handle, parseBody, HttpError } from "@/lib/server/http";
 import { queryOne } from "@/lib/server/db";
 import { requireRole } from "@/lib/server/auth";
 
@@ -24,6 +24,14 @@ export const GET = handle(async () => {
 export const PATCH = handle(async (request: Request) => {
   await requireRole("owner");
   const body = await parseBody(request, SettingsSchema);
+
+  // Validate the hours that will be in effect after this change, not just the fields sent.
+  const current = await queryOne<{ open_time: string; close_time: string }>("SELECT open_time, close_time FROM settings WHERE id = 1");
+  const open = body.openTime ?? current?.open_time?.slice(0, 5) ?? "08:00";
+  const close = body.closeTime ?? current?.close_time?.slice(0, 5) ?? "22:00";
+  if (close <= open) throw new HttpError(400, "Closing time must be after opening time", "BAD_HOURS");
+  if (body.openTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(body.openTime)) throw new HttpError(400, "Invalid opening time");
+  if (body.closeTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(body.closeTime)) throw new HttpError(400, "Invalid closing time");
 
   const fields: string[] = [];
   const values: unknown[] = [];

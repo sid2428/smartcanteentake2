@@ -64,6 +64,21 @@ export const POST = handle(async (request: Request) => {
       throw new HttpError(400, `Cannot redeem ticket in ${ticket.status} status`, "INVALID_STATUS");
     }
 
+    // Past its pickup window but not yet swept: still expired.
+    if (new Date(ticket.expires_at).getTime() < Date.now()) {
+      throw new HttpError(400, "This ticket's pickup window has passed.", "TICKET_EXPIRED");
+    }
+
+    // Don't hand over food the kitchen hasn't finished.
+    if (ticket.status !== "READY") {
+      const label = ticket.status === "PREPARING" ? "still being prepared" : "not started yet";
+      throw new HttpError(
+        409,
+        `${ticket.dish_name} is ${label}. Mark it ready on the kitchen board once it's done.`,
+        "NOT_READY",
+      );
+    }
+
     // Update ticket to REDEEMED
     const updated = await tx.queryOne(
       `UPDATE tickets

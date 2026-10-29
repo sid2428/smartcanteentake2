@@ -79,3 +79,53 @@ export function Arrow({ className = "h-4 w-4" }: { className?: string }) {
     </svg>
   );
 }
+
+/** Full-section error with a retry, for when a page's data couldn't load at all. */
+export function ErrorState({
+  title = "We couldn't load this",
+  message,
+  onRetry,
+  className = "",
+}: {
+  title?: string;
+  message?: string;
+  onRetry?: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`flex animate-rise flex-col items-center py-16 text-center ${className}`} role="alert">
+      <span className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-terra-50 text-terra-500" aria-hidden>
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M12 8v5m0 3h.01M10.3 3.9 2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0Z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      <p className="font-display text-2xl font-light text-ink">{title}</p>
+      {message && <p className="mt-3 max-w-sm text-sm leading-relaxed text-ink-muted">{message}</p>}
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="mt-6 rounded-full border border-cream-400 px-5 py-2.5 text-sm font-semibold text-ink-soft transition-colors hover:border-forest-500 hover:text-forest-700"
+        >
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Small "Live" / "Reconnecting…" marker for screens that refresh themselves. */
+export function LiveIndicator({ stale, className = "" }: { stale?: boolean; className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-2 text-xs font-medium ${stale ? "text-terra-600" : "text-ink-muted"} ${className}`}
+      role="status"
+      aria-live="polite"
+    >
+      <span className="relative flex h-2 w-2">
+        {!stale && <span className="absolute inset-0 animate-ping rounded-full bg-forest-400" />}
+        <span className={`relative h-2 w-2 rounded-full ${stale ? "bg-terra-400" : "bg-forest-500"}`} />
+      </span>
+      {stale ? "Reconnecting…" : "Live"}
+    </span>
+  );
+}

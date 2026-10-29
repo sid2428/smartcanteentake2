@@ -24,6 +24,7 @@ const staffLinks = [
 
 const ownerLinks = [
   { href: ROUTES.owner, label: "Overview" },
+  { href: ROUTES.ownerInsights, label: "Insights" },
   { href: ROUTES.ownerDishes, label: "Dishes" },
   { href: ROUTES.kitchen, label: "Kitchen" },
   { href: ROUTES.scan, label: "Scan QR" },

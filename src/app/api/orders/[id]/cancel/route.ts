@@ -23,8 +23,15 @@ export const POST = handle(async (_request: Request, { params }: { params: Promi
       throw new HttpError(403, "Access denied");
     }
 
+    // Cancelling twice (double tap) is harmless.
+    if (order.status === "PAYMENT_FAILED") return;
+
     if (order.status !== "PENDING_PAYMENT") {
-      throw new HttpError(400, "Only pending orders can be cancelled directly");
+      throw new HttpError(
+        409,
+        "This order is already paid, so it can't be cancelled here. Please speak to the counter.",
+        "NOT_CANCELLABLE",
+      );
     }
 
     await releaseUnpaidOrder(tx, order);

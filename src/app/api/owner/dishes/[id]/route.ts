@@ -11,7 +11,11 @@ const UpdateDishSchema = z.object({
   category: z.string().min(1).max(50).optional(),
   counter: z.enum(COUNTERS).optional(),
   pricePaise: z.number().int().positive().optional(),
-  stock: z.number().int().min(0).optional(),
+  stock: z.number().int().min(0).max(100_000).optional(),
+  /** Atomic restock / write-off: added to the live stock, so sales in flight are never overwritten. */
+  stockDelta: z.number().int().min(-100_000).max(100_000).optional(),
+  /** With `stock`: only apply if stock still equals this (it may have sold since the owner looked). */
+  expectedStock: z.number().int().min(0).optional(),
   prepMinutes: z.number().int().min(1).optional(),
   isVeg: z.boolean().optional(),
   emoji: z.string().max(4).optional(),
@@ -48,11 +52,31 @@ export const PATCH = handle(async (request: Request, { params }: { params: Promi
     }
   }
 
+  if (body.stockDelta !== undefined) {
+    if (body.stock !== undefined) throw new HttpError(400, "Send either stock or stockDelta, not both");
+    fields.push(`stock = GREATEST(0, stock + $${idx++})`);
+    values.push(body.stockDelta);
+  }
+
   if (fields.length === 0) throw new HttpError(400, "No fields to update");
 
+  let guard = "";
+  if (body.stock !== undefined && body.expectedStock !== undefined) {
+    guard = ` AND stock = $${idx++}`;
+    values.push(body.expectedStock);
+  }
+
   values.push(id);
-  const dish = await queryOne(`UPDATE dishes SET ${fields.join(", ")} WHERE id = $${idx} RETURNING *`, values);
-  if (!dish) throw new HttpError(404, "Dish not found");
+  const dish = await queryOne(`UPDATE dishes SET ${fields.join(", ")} WHERE id = $${idx}${guard} RETURNING *`, values);
+  if (!dish) {
+    const current = await queryOne<{ stock: number; name: string }>("SELECT stock, name FROM dishes WHERE id = $1", [id]);
+    if (!current) throw new HttpError(404, "Dish not found");
+    throw new HttpError(
+      409,
+      `${current.name} sold while you were editing: stock is now ${current.stock}. Check the number and save again.`,
+      "STOCK_CHANGED",
+    );
+  }
 
   return NextResponse.json({ dish });
 });

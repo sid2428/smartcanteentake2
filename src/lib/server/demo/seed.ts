@@ -5,6 +5,7 @@ import { addDays, istDate, slotWindowsForDay, type TicketStatus } from "@/lib/do
 import { hashPassword } from "../passwords";
 import { seedId, slotId } from "./ids";
 import { SCHEMA_SQL } from "./schema";
+import { seedHistory } from "./history";
 
 type DishSeed = {
   name: string; description: string; category: string; counter: "Main" | "Snacks" | "Beverages";
@@ -169,4 +170,7 @@ async function seed(tx: Transaction, passwordHash: string, now: number): Promise
     "INSERT INTO refunds (ticket_id, user_id, amount_paise, percent, reason) VALUES ($1, $2, $3, 50, $4)",
     [noShow, student.id, vadaPav / 2, "Automatic refund: ticket uncollected (READY)"],
   );
+
+  // Four weeks of other students' orders, for the owner's demand prediction.
+  await seedHistory(tx, dishes, passwordHash, staff.id, now);
 }

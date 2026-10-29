@@ -36,6 +36,17 @@ export function handle<A extends unknown[]>(fn: (...args: A) => Promise<Response
         const where = first?.path.length ? `${first.path.join(".")}: ` : "";
         return NextResponse.json({ error: `${where}${first?.message ?? "Invalid input"}` }, { status: 400 });
       }
+      // Postgres errors worth translating: a malformed uuid in the URL, or a CHECK/unique backstop.
+      const pgCode = (error as { code?: unknown })?.code;
+      if (pgCode === "22P02") {
+        return NextResponse.json({ error: "Not found", code: "INVALID_ID" }, { status: 404 });
+      }
+      if (pgCode === "23514" || pgCode === "23505") {
+        return NextResponse.json(
+          { error: "That change conflicts with the latest data. Please refresh and try again.", code: "CONFLICT" },
+          { status: 409 },
+        );
+      }
       console.error(error);
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }

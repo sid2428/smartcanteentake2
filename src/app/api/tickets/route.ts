@@ -3,13 +3,14 @@ import { handle } from "@/lib/server/http";
 import { query } from "@/lib/server/db";
 import { requireRole } from "@/lib/server/auth";
 import { maybeSweep } from "@/lib/server/sweeps";
+import { kitchenEstimates } from "@/lib/server/tracking";
 
 /** GET /api/tickets - list user's active/recent tickets */
 export const GET = handle(async () => {
   const session = await requireRole("student", "staff", "owner");
   await maybeSweep();
 
-  const tickets = await query(
+  const rows = await query<{ id: string }>(
     `SELECT t.*, d.emoji, o.code as order_code
      FROM tickets t
      JOIN dishes d ON d.id = t.dish_id
@@ -20,5 +21,11 @@ export const GET = handle(async () => {
     [session.uid]
   );
 
-  return NextResponse.json({ tickets });
+  const estimates = await kitchenEstimates();
+  const tickets = rows.map((t) => {
+    const est = estimates.get(t.id);
+    return { ...t, ready_estimate_at: est ? new Date(est.readyAt).toISOString() : null };
+  });
+
+  return NextResponse.json({ tickets }, { headers: { "Cache-Control": "no-store" } });
 });

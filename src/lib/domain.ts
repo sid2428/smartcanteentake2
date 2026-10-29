@@ -125,3 +125,109 @@ export const TICKET_STATUS_LABEL: Record<TicketStatus, string> = {
   EXPIRED: "Expired",
   CANCELLED: "Cancelled",
 };
+
+/* ----------------------------------------------------------------------------
+ * Preparation-time estimates (live order tracking)
+ * ------------------------------------------------------------------------- */
+
+/** Cooks working in parallel at each counter. Used to turn queued work into wall-clock time. */
+export const STATIONS_PER_COUNTER = 2;
+
+/** Minutes to prepare `qty` portions: extra portions are batched, so they cost half a portion each. */
+export function prepMinutesFor(prepMinutes: number, qty: number): number {
+  const base = Math.max(1, prepMinutes);
+  return base + Math.max(0, qty - 1) * Math.ceil(base / 2);
+}
+
+export type QueueTicket = {
+  id: string;
+  counter: string;
+  status: "ISSUED" | "PREPARING" | "READY";
+  qty: number;
+  prepMinutes: number;
+  /** When cooking started (PREPARING only), epoch ms. */
+  preparingAt: number | null;
+  /** Pickup slot start, epoch ms: the kitchen works through tickets in slot order. */
+  slotStartsAt: number;
+  createdAt: number;
+};
+
+export type TicketEstimate = {
+  /** Epoch ms when the dish should be ready. Equals `nowMs` for READY tickets. */
+  readyAt: number;
+  /** Tickets queued ahead of this one at the same counter (0 when cooking or ready). */
+  ahead: number;
+};
+
+/**
+ * Simulates each counter's queue: tickets already cooking finish first (never earlier than a
+ * minute from now, since the kitchen rarely finishes the instant we predict), then waiting
+ * tickets are handed to whichever station frees up first, in pickup-slot order.
+ */
+export function estimateReadyTimes(
+  tickets: QueueTicket[],
+  nowMs: number,
+  stationsPerCounter = STATIONS_PER_COUNTER,
+): Map<string, TicketEstimate> {
+  const MIN = 60_000;
+  const result = new Map<string, TicketEstimate>();
+  const byCounter = new Map<string, QueueTicket[]>();
+  for (const t of tickets) {
+    if (!byCounter.has(t.counter)) byCounter.set(t.counter, []);
+    byCounter.get(t.counter)!.push(t);
+  }
+
+  for (const queue of byCounter.values()) {
+    const stations: number[] = Array.from({ length: Math.max(1, stationsPerCounter) }, () => nowMs);
+
+    for (const t of queue.filter((q) => q.status === "READY")) result.set(t.id, { readyAt: nowMs, ahead: 0 });
+
+    const cooking = queue
+      .filter((q) => q.status === "PREPARING")
+      .map((t) => {
+        const started = t.preparingAt ?? nowMs;
+        const finish = Math.max(nowMs + MIN, started + prepMinutesFor(t.prepMinutes, t.qty) * MIN);
+        return { t, finish };
+      })
+      .sort((a, b) => a.finish - b.finish);
+    for (const { t, finish } of cooking) {
+      // Occupy the earliest-free station; with more cooking tickets than stations they stack up.
+      stations.sort((a, b) => a - b);
+      stations[0] = Math.max(stations[0], finish);
+      result.set(t.id, { readyAt: finish, ahead: 0 });
+    }
+
+    const waiting = queue
+      .filter((q) => q.status === "ISSUED")
+      .sort((a, b) => a.slotStartsAt - b.slotStartsAt || a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+    waiting.forEach((t, index) => {
+      stations.sort((a, b) => a - b);
+      const finish = stations[0] + prepMinutesFor(t.prepMinutes, t.qty) * MIN;
+      stations[0] = finish;
+      result.set(t.id, { readyAt: finish, ahead: index });
+    });
+  }
+  return result;
+}
+
+export const ORDER_STAGES = ["PLACED", "PAID", "PREPARING", "READY", "COLLECTED"] as const;
+export type OrderStage = (typeof ORDER_STAGES)[number];
+
+/**
+ * Where an order is in its journey, from its own status and its tickets'. An order is only as far
+ * along as its slowest dish, except that it counts as READY once every uncollected dish is ready.
+ */
+export function orderStage(orderStatus: string, ticketStatuses: string[]): OrderStage | "CANCELLED" | "EXPIRED" {
+  if (orderStatus === "PAYMENT_FAILED") return "CANCELLED";
+  if (orderStatus === "PENDING_PAYMENT") return "PLACED";
+  const open = ticketStatuses.filter((s) => s === "ISSUED" || s === "PREPARING" || s === "READY");
+  if (open.length === 0) {
+    if (ticketStatuses.some((s) => s === "REDEEMED")) return "COLLECTED";
+    if (ticketStatuses.some((s) => s === "EXPIRED")) return "EXPIRED";
+    if (ticketStatuses.length > 0 && ticketStatuses.every((s) => s === "CANCELLED")) return "CANCELLED";
+    return "PAID";
+  }
+  if (open.every((s) => s === "READY")) return "READY";
+  if (open.some((s) => s === "PREPARING" || s === "READY")) return "PREPARING";
+  return "PAID";
+}

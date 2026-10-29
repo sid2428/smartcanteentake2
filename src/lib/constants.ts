@@ -14,6 +14,7 @@ export const ROUTES = {
   scan: "/scan",
   owner: "/owner",
   ownerDishes: "/owner/dishes",
+  ownerInsights: "/owner/insights",
   ownerSettings: "/owner/settings",
   ownerRefunds: "/owner/refunds",
 } as const;

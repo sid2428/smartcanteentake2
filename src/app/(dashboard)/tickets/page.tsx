@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import QRCode from "qrcode";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { useLive } from "@/lib/use-live";
 import { buildQrPayload, msUntilNextStep, STEP_SECONDS } from "@/lib/tickets/qr-code";
 import { Badge, STATUS_COLOR } from "@/components/ui/badge";
-import { PageHeader, Loading, EmptyState } from "@/components/ui/page";
+import { PageHeader, Loading, EmptyState, ErrorState, LiveIndicator } from "@/components/ui/page";
 import { DishPhoto, DishThumb } from "@/components/dish-photo";
 import { formatTime, formatDay } from "@/lib/domain";
 
@@ -20,28 +21,33 @@ type Ticket = {
   qty: number;
   status: string;
   expires_at: string;
+  ready_estimate_at: string | null;
 };
 
+const OPEN = ["READY", "ISSUED", "PREPARING"];
+
+/** "Ready in ~6 min" for tickets still in the kitchen. */
+function etaLabel(t: Ticket): string | null {
+  if (!t.ready_estimate_at || (t.status !== "ISSUED" && t.status !== "PREPARING")) return null;
+  const min = Math.max(1, Math.ceil((new Date(t.ready_estimate_at).getTime() - Date.now()) / 60_000));
+  return `Ready in ~${min} min`;
+}
+
 export default function TicketsPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+  // Live, so a ticket flips from "Preparing" to "Ready" (and the QR to "Redeemed") on its own.
+  const live = useLive(async () => (await api<{ tickets: Ticket[] }>("/api/tickets")).tickets, { intervalMs: 10_000 });
+  const tickets = live.data ?? [];
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const activeTicket =
+    tickets.find((t) => t.id === chosenId) ?? tickets.find((t) => OPEN.includes(t.status)) ?? tickets[0] ?? null;
+  const setActiveTicket = (t: Ticket) => setChosenId(t.id);
 
-  useEffect(() => {
-    api<{ tickets: Ticket[] }>("/api/tickets")
-      .then((res) => {
-        setTickets(res.tickets);
-        if (res.tickets.length > 0) {
-          const firstRedeemable = res.tickets.find((t) => t.status === "READY" || t.status === "ISSUED" || t.status === "PREPARING");
-          setActiveTicket(firstRedeemable || res.tickets[0]);
-        }
-      })
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (live.loading && !live.data) {
     return <Loading label="Loading your tickets…" />;
+  }
+
+  if (!live.data) {
+    return <ErrorState message={errorMessage(live.error)} onRetry={() => void live.refresh()} />;
   }
 
   if (tickets.length === 0) {
@@ -65,6 +71,7 @@ export default function TicketsPage() {
           </>
         }
         lede="Show the QR at the counter. It refreshes every thirty seconds, so a screenshot won't work — keep this page open."
+        actions={<LiveIndicator stale={live.stale} />}
       />
 
       <div className="grid grid-cols-1 gap-12 lg:grid-cols-[26rem_1fr] lg:gap-16">
@@ -106,6 +113,7 @@ export default function TicketsPage() {
                       </span>
                       <span className="block text-xs text-ink-muted">
                         {t.counter} Counter · Code #{t.order_code}
+                        {etaLabel(t) && <span className="text-forest-700"> · {etaLabel(t)}</span>}
                       </span>
                     </span>
                     <Badge color={STATUS_COLOR[t.status] || "gray"}>{t.status}</Badge>
@@ -125,18 +133,26 @@ function TicketQRCard({ ticket }: { ticket: Ticket }) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [secondsRemaining, setSecondsRemaining] = useState<number>(STEP_SECONDS);
 
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [keyAttempt, setKeyAttempt] = useState(0);
+
   // Fetch ticket secret key
   useEffect(() => {
     let mounted = true;
     api<{ key: string }>(`/api/tickets/${ticket.id}/key`)
       .then((res) => {
-        if (mounted) setTicketKey(res.key);
+        if (mounted) {
+          setKeyError(null);
+          setTicketKey(res.key);
+        }
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        if (mounted) setKeyError(errorMessage(err, "Couldn't load this ticket's QR"));
+      });
     return () => {
       mounted = false;
     };
-  }, [ticket.id]);
+  }, [ticket.id, keyAttempt]);
 
   // Handle live 30-sec rotating QR generation
   useEffect(() => {
@@ -248,10 +264,26 @@ function TicketQRCard({ ticket }: { ticket: Ticket }) {
               </span>
             </div>
           </>
+        ) : keyError ? (
+          <div className="flex aspect-square w-full max-w-[16rem] flex-col items-center justify-center gap-4 rounded-3xl bg-terra-50 p-6 text-center">
+            <p className="text-sm text-terra-700">{keyError}</p>
+            <button
+              onClick={() => setKeyAttempt((n) => n + 1)}
+              className="rounded-full border border-terra-200 px-4 py-2 text-xs font-semibold text-terra-700 hover:bg-terra-100"
+            >
+              Try again
+            </button>
+          </div>
         ) : (
           <div className="flex aspect-square w-full max-w-[16rem] items-center justify-center rounded-3xl bg-cream-200">
             <span className="animate-pulse text-xs text-ink-muted">Generating QR code…</span>
           </div>
+        )}
+        {etaLabel(ticket) && (
+          <p className="mt-4 text-sm font-medium text-forest-700" aria-live="polite">
+            {ticket.status === "PREPARING" ? "Cooking now · " : "In the queue · "}
+            {etaLabel(ticket)}
+          </p>
         )}
       </div>
 

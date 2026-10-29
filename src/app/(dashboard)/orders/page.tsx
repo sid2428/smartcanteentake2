@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { useLive } from "@/lib/use-live";
 import { Badge, STATUS_COLOR } from "@/components/ui/badge";
-import { PageHeader, Loading, EmptyState, Arrow } from "@/components/ui/page";
+import { PageHeader, Loading, EmptyState, ErrorState, Arrow, LiveIndicator } from "@/components/ui/page";
 import { DishThumb } from "@/components/dish-photo";
 import { formatINR, formatDay, formatTime } from "@/lib/domain";
 
@@ -23,18 +23,16 @@ type OrderSummary = {
 };
 
 export default function OrdersListPage() {
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Statuses change as the kitchen works, so keep the list fresh.
+  const live = useLive(async () => (await api<{ orders: OrderSummary[] }>("/api/orders")).orders, { intervalMs: 15_000 });
+  const orders = live.data ?? [];
 
-  useEffect(() => {
-    api<{ orders: OrderSummary[] }>("/api/orders")
-      .then((res) => setOrders(res.orders))
-      .catch((err) => console.error(err))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
+  if (live.loading && !live.data) {
     return <Loading label="Loading your orders…" />;
+  }
+
+  if (!live.data) {
+    return <ErrorState message={errorMessage(live.error)} onRetry={() => void live.refresh()} />;
   }
 
   return (
@@ -46,7 +44,8 @@ export default function OrdersListPage() {
             Your <span className="italic text-forest-700">orders</span>
           </>
         }
-        lede="Every meal you've ordered, newest first. Tap one for pickup details and payment."
+        lede="Every meal you've ordered, newest first. Tap one to track it live, pay, or see pickup details."
+        actions={<LiveIndicator stale={live.stale} />}
       />
 
       {orders.length === 0 ? (

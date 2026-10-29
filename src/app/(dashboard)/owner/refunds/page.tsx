@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 import { Badge } from "@/components/ui/badge";
-import { PageHeader, Loading, EmptyState } from "@/components/ui/page";
+import { PageHeader, Loading, EmptyState, ErrorState } from "@/components/ui/page";
 import { DishThumb } from "@/components/dish-photo";
 import { formatINR, formatDay, formatTime } from "@/lib/domain";
 
@@ -22,13 +22,18 @@ type Refund = {
 export default function OwnerRefundsPage() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     api<{ refunds: Refund[] }>("/api/owner/refunds")
-      .then((res) => setRefunds(res.refunds))
-      .catch((err) => console.error(err))
+      .then((res) => {
+        setLoadError(null);
+        setRefunds(res.refunds);
+      })
+      .catch((err) => setLoadError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, []);
+  }, [attempt]);
 
   const totalPaise = refunds.reduce((s, r) => s + r.amount_paise, 0);
 
@@ -46,6 +51,8 @@ export default function OwnerRefundsPage() {
 
       {loading ? (
         <Loading />
+      ) : loadError ? (
+        <ErrorState message={loadError} onRetry={() => setAttempt((n) => n + 1)} />
       ) : refunds.length === 0 ? (
         <EmptyState icon="₹" title="No refunds recorded yet." />
       ) : (

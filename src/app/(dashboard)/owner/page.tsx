@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
+import { useLive } from "@/lib/use-live";
+import { hourLabel, type PeakWindow } from "@/lib/insights";
 import { Button } from "@/components/ui/button";
-import { PageHeader, SectionTitle, Arrow } from "@/components/ui/page";
+import { PageHeader, SectionTitle, Arrow, ErrorState, LiveIndicator } from "@/components/ui/page";
 import { DishThumb } from "@/components/dish-photo";
 import { formatINR } from "@/lib/domain";
 
@@ -29,16 +31,21 @@ const MANAGE_LINKS = [
   { href: "/owner/refunds", title: "View Refund History", blurb: "Expired and uncollected tickets", icon: "₹" },
 ];
 
+type Teaser = {
+  today: { next_peak: PeakWindow | null };
+  dishes: { risk: "OUT" | "LOW" | "OK" }[];
+};
+
 export default function OwnerDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
   const [generatingSlots, setGeneratingSlots] = useState(false);
   const [genMessage, setGenMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    api<Stats>("/api/owner/stats")
-      .then(setStats)
-      .catch((err) => console.error(err));
-  }, []);
+  // Revenue and kitchen counts move all day; keep them live.
+  const live = useLive(() => api<Stats>("/api/owner/stats"), { intervalMs: 20_000 });
+  const stats = live.data;
+  const insights = useLive(() => api<Teaser>("/api/owner/insights"), { intervalMs: 120_000 });
+  const nextPeak = insights.data?.today.next_peak ?? null;
+  const atRisk = insights.data?.dishes.filter((d) => d.risk !== "OK").length ?? 0;
 
   async function handleGenerateSlots() {
     setGeneratingSlots(true);
@@ -49,13 +56,14 @@ export default function OwnerDashboard() {
       });
       setGenMessage(`Success! Generated ${res.created} new pickup slots for today & tomorrow.`);
     } catch (err) {
-      setGenMessage(err instanceof Error ? err.message : "Failed to generate slots");
+      setGenMessage(errorMessage(err, "Failed to generate slots"));
     } finally {
       setGeneratingSlots(false);
     }
   }
 
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  // Fixed time zone: the same string on the server and in the browser (no hydration mismatch).
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" });
   const maxQty = Math.max(1, ...(stats?.topDishes ?? []).map((d) => Number(d.total_qty) || 0));
 
   const metrics = [
@@ -73,7 +81,12 @@ export default function OwnerDashboard() {
             Canteen <span className="italic text-forest-700">overview</span>
           </>
         }
-        lede="Today's real-time operations & sales"
+        lede={
+          <span className="flex flex-col gap-3">
+            Today&apos;s real-time operations &amp; sales
+            <LiveIndicator stale={live.stale} />
+          </span>
+        }
         actions={
           <>
             <Button variant="secondary" disabled={generatingSlots} onClick={handleGenerateSlots}>
@@ -92,6 +105,10 @@ export default function OwnerDashboard() {
         <p className="-mt-6 mb-10 animate-pop rounded-2xl bg-forest-50 px-5 py-3.5 text-sm text-forest-800 ring-1 ring-inset ring-forest-100">
           {genMessage}
         </p>
+      )}
+
+      {!stats && live.error && (
+        <ErrorState message={errorMessage(live.error)} onRetry={() => void live.refresh()} className="!py-8" />
       )}
 
       {/* Headline numbers */}
@@ -123,6 +140,26 @@ export default function OwnerDashboard() {
           </dl>
         </div>
       </section>
+
+      {insights.data && (
+        <Link
+          href="/owner/insights"
+          className="group mt-8 flex animate-rise flex-wrap items-center gap-x-8 gap-y-3 border-b border-cream-300 pb-6 text-sm"
+        >
+          <span className="text-ink-muted">
+            Next rush{" "}
+            <span className="font-semibold text-ink">
+              {nextPeak ? `${hourLabel(nextPeak.startHour)} – ${hourLabel(nextPeak.endHour)} · ~${Math.round(nextPeak.expected)} orders` : "is over for today"}
+            </span>
+          </span>
+          <span className={atRisk > 0 ? "font-semibold text-terra-600" : "text-ink-muted"}>
+            {atRisk > 0 ? `⚠ ${atRisk} ${atRisk === 1 ? "dish" : "dishes"} may run out today` : "Stock should last the day"}
+          </span>
+          <span className="ml-auto inline-flex items-center gap-2 font-semibold text-forest-700">
+            Demand insights <Arrow className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </Link>
+      )}
 
       <div className="mt-16 grid grid-cols-1 gap-14 lg:grid-cols-[1.4fr_1fr] lg:gap-16">
         {/* Top Dishes */}

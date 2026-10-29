@@ -3,9 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageHeader, Loading } from "@/components/ui/page";
+import { PageHeader, Loading, ErrorState } from "@/components/ui/page";
 import { useToast } from "@/components/ui/toast";
-import { api } from "@/lib/api-client";
+import { api, errorMessage } from "@/lib/api-client";
 
 type Settings = {
   open_time: string;
@@ -23,9 +23,17 @@ export default function OwnerSettingsPage() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
   useEffect(() => {
-    api<{ settings: Settings }>("/api/owner/settings").then((d) => setSettings(d.settings)).catch(() => {});
-  }, []);
+    api<{ settings: Settings }>("/api/owner/settings")
+      .then((d) => {
+        setLoadError(null);
+        setSettings(d.settings);
+      })
+      .catch((err) => setLoadError(errorMessage(err)));
+  }, [attempt]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -48,13 +56,16 @@ export default function OwnerSettingsPage() {
       setSettings(res.settings);
       toast("Settings saved!", "success");
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to save", "error");
+      toast(errorMessage(err, "Failed to save"), "error");
     } finally {
       setLoading(false);
     }
   }
 
-  if (!settings) return <Loading />;
+  if (!settings) {
+    if (loadError) return <ErrorState message={loadError} onRetry={() => setAttempt((n) => n + 1)} />;
+    return <Loading />;
+  }
 
   return (
     <div className="mx-auto max-w-4xl">

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart, type CartItem } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/input";
-import { Loading, EmptyState } from "@/components/ui/page";
+import { Loading, EmptyState, ErrorState, LiveIndicator } from "@/components/ui/page";
 import { DishPhoto, DishThumb, DietMark } from "@/components/dish-photo";
 import { useToast } from "@/components/ui/toast";
-import { api } from "@/lib/api-client";
+import { api, ApiError, errorMessage, newRequestKey } from "@/lib/api-client";
+import { useLive } from "@/lib/use-live";
 import { SCENES } from "@/lib/dish-images";
 import { formatINR, formatTime, formatDay } from "@/lib/domain";
 
@@ -42,41 +43,46 @@ function greeting() {
 }
 
 export default function MenuPage() {
-  const { items: cartItems, add, updateQty, totalPaise, totalItems, clear } = useCart();
+  const { items: cartItems, add, updateQty, totalPaise, totalItems, clear, reconcile } = useCart();
   const { toast } = useToast();
   const router = useRouter();
 
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [category, setCategory] = useState<string>("All");
   const [vegOnly, setVegOnly] = useState<boolean>(false);
   const [ordering, setOrdering] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [trayRequested, setTrayOpen] = useState(false);
   // The mobile tray sheet closes itself once it has nothing in it.
   const trayOpen = trayRequested && cartItems.length > 0;
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [dishesRes, slotsRes] = await Promise.all([
-          api<{ dishes: Dish[] }>("/api/dishes"),
-          api<{ slots: Slot[] }>("/api/slots")
-        ]);
-        setDishes(dishesRes.dishes);
-        setSlots(slotsRes.slots);
-        if (slotsRes.slots.length > 0) {
-          setSelectedSlot(slotsRes.slots[0].id);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+  // Synchronous guard: a double tap can fire twice before `ordering` re-renders.
+  const submitting = useRef(false);
+  // One idempotency key per checkout attempt. Kept across retries of the same tray + slot (so a
+  // retry after a dropped connection can't place a second order), replaced when either changes.
+  const attempt = useRef<{ signature: string; key: string } | null>(null);
+
+  // Live stock: refreshed every few seconds so sold-out dishes and "only N left" update instantly.
+  const menu = useLive(
+    async () => {
+      const res = await api<{ dishes: Dish[] }>("/api/dishes");
+      for (const note of reconcile(res.dishes)) toast(note, "info");
+      return res.dishes;
+    },
+    { intervalMs: 8_000 },
+  );
+
+  // Slots fill up too; drop the selection if the chosen slot disappears.
+  const slotsLive = useLive(
+    async () => {
+      const res = await api<{ slots: Slot[] }>("/api/slots");
+      setSelectedSlot((prev) => (res.slots.some((s) => s.id === prev) ? prev : (res.slots[0]?.id ?? "")));
+      return res.slots;
+    },
+    { intervalMs: 30_000 },
+  );
+
+  const dishes = useMemo(() => menu.data ?? [], [menu.data]);
+  const slots = slotsLive.data ?? [];
 
   useEffect(() => {
     document.body.style.overflow = trayOpen ? "hidden" : "";
@@ -94,6 +100,7 @@ export default function MenuPage() {
   });
 
   async function handleCheckout() {
+    if (submitting.current) return;
     if (!selectedSlot) {
       toast("Please select a pickup slot", "error");
       return;
@@ -103,28 +110,45 @@ export default function MenuPage() {
       return;
     }
 
+    const items = cartItems.map((i) => ({ dishId: i.dishId, qty: i.qty }));
+    const signature = JSON.stringify([selectedSlot, items]);
+    if (attempt.current?.signature !== signature) attempt.current = { signature, key: newRequestKey() };
+
+    submitting.current = true;
     setOrdering(true);
     try {
       const res = await api<{ order: { id: string; code: string } }>("/api/orders", {
         method: "POST",
-        body: JSON.stringify({
-          slotId: selectedSlot,
-          items: cartItems.map((i) => ({ dishId: i.dishId, qty: i.qty })),
-        }),
+        body: JSON.stringify({ slotId: selectedSlot, items, clientRef: attempt.current.key }),
       });
 
+      attempt.current = null;
       clear();
       toast(`Order placed! Code: ${res.order.code}`, "success");
       router.push(`/orders/${res.order.id}`);
     } catch (err) {
-      toast(err instanceof Error ? err.message : "Failed to place order", "error");
+      const code = err instanceof ApiError ? err.code : undefined;
+      if (code === "OUT_OF_STOCK" || code === "DISH_UNAVAILABLE") void menu.refresh();
+      if (code === "SLOT_FULL") void slotsLive.refresh();
+      toast(errorMessage(err, "Failed to place order"), "error");
     } finally {
+      submitting.current = false;
       setOrdering(false);
     }
   }
 
-  if (loading) {
+  if (menu.loading && !menu.data) {
     return <Loading label="Setting the table…" />;
+  }
+
+  if (!menu.data) {
+    return (
+      <ErrorState
+        title="The menu didn't load"
+        message={errorMessage(menu.error, "Please check your connection and try again.")}
+        onRetry={() => void menu.refresh()}
+      />
+    );
   }
 
   const trayProps: TrayProps = {
@@ -156,6 +180,7 @@ export default function MenuPage() {
           <p className="mt-5 max-w-md text-[0.95rem] leading-relaxed text-ink-muted">
             Pick your dishes, choose a pickup slot, and skip the queue. We&apos;ll have it hot at the counter.
           </p>
+          <LiveIndicator stale={menu.stale} className="mt-5" />
         </div>
         <div className="relative hidden h-56 w-[22rem] animate-fade sm:block" aria-hidden>
           <div className="absolute right-24 top-0 h-52 w-52 overflow-hidden rounded-full shadow-lift ring-8 ring-cream-100">
@@ -165,7 +190,7 @@ export default function MenuPage() {
             <Image src={SCENES.chaiPour} alt="" fill sizes="144px" className="object-cover" />
           </div>
           <span className="absolute -left-2 top-10 rotate-[-8deg] rounded-full bg-terra-500 px-4 py-2 font-display text-sm italic text-cream-50 shadow-soft">
-            {dishes.length} dishes today
+            {dishes.filter((d) => d.stock > 0).length} dishes today
           </span>
         </div>
       </section>
